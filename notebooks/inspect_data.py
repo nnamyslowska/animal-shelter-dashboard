@@ -54,6 +54,7 @@ def main() -> None:
         "intake_is_dead",
         "outcome_is_current",
         "was_outcome_alive",
+        "Primary Color",
     ]
 
     for col in key_cols:
