@@ -168,7 +168,7 @@ class ShelterDataCleaner:
         group = group.mask(current_mask | outcome_type.isna(), "No_Outcome_Yet")
         group = group.mask(outcome_type.isin(positive), "Positive")
         group = group.mask(outcome_type.isin(negative), "Negative")
-        group = group.mask(outcome_type.isin(partner), "Other_or_Partner") # 
+        group = group.mask(outcome_type.isin(partner), "Other_or_Partner") # transfers and similar
         group = group.mask(outcome_type.isin(admin), "Admin_or_Unknown") # whether missing or duplicate
 
         self.df["outcome_group"] = group
