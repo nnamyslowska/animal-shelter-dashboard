@@ -25,26 +25,20 @@ class ShelterDataCleaner:
 
     # filling missing values
     def fill_missing_values(self) -> None:
-        if "animal_name" in self.df.columns:
-            self.df["animal_name"] = self.df["animal_name"].fillna("Unknown")
+        fill_cols = [
+            "animal_name",
+            "secondary_color",
+            "reason_for_intake",
+            "intake_subtype",
+            "outcome_subtype",
+            "jurisdiction",
+            "crossing",
+        ]
 
-        if "secondary_color" in self.df.columns:
-            self.df["secondary_color"] = self.df["secondary_color"].fillna("Unknown")
+        for col in fill_cols:
+            if col in self.df.columns:
+                self.df[col] = self.df[col].fillna("Unknown")
 
-        if "reason_for_intake" in self.df.columns:
-            self.df["reason_for_intake"] = self.df["reason_for_intake"].fillna("Unknown")
-
-        if "intake_subtype" in self.df.columns:
-            self.df["intake_subtype"] = self.df["intake_subtype"].fillna("Unknown")
-
-        if "outcome_subtype" in self.df.columns:
-            self.df["outcome_subtype"] = self.df["outcome_subtype"].fillna("Unknown")
-
-        if "jurisdiction" in self.df.columns:
-            self.df["jurisdiction"] = self.df["jurisdiction"].fillna("Unknown")
-
-        if "crossing" in self.df.columns:
-            self.df["crossing"] = self.df["crossing"].fillna("Unknown")
 
     # normalizing text columns
     def normalize_text_columns(self) -> None:
@@ -66,26 +60,24 @@ class ShelterDataCleaner:
                 s = (
                     s.str.strip()
                         .str.replace(r"\s+", " ", regex=True)
-                        .str.upper()
+                        .str.title()
                 )
                 self.df[col] = s
 
         # Fixing typos
         if "intake_condition" in self.df.columns:
-            self.df["intake_condition"] = self.df["intake_condition"].replace({"ILL MODERATETE": "ILL MODERATE"})
+            self.df["intake_condition"] = self.df["intake_condition"].replace({"Ill Moderatete": "Ill Moderate"})
 
     # convert intake_is_dead to boolean, if alive on intake then False, if dead on intake then True
     def fix_intake_is_dead(self) -> None:
         if "intake_is_dead" in self.df.columns:
             self.df["intake_is_dead"] = (
                 self.df["intake_is_dead"]
-                .map({
-                    "Alive on Intake": False,
-                    "Dead on Intake": True
-                })
-                .fillna(False)
-                .astype(bool)
+                .astype("string")
+                .map({"Alive on Intake": False, "Dead on Intake": True})
+                .astype("boolean")
             )
+
 
     # convert was_outcome_alive to boolean
     def fix_was_outcome_alive(self) -> None:
@@ -100,6 +92,11 @@ class ShelterDataCleaner:
 
     # creating age features
     def create_age_features(self) -> None:
+        if "dob" not in self.df.columns or "intake_date" not in self.df.columns:
+            self.df["age_at_intake_years"] = np.nan
+            self.df["age_group"] = "Unknown"
+            return
+
         # Age in years
         self.df["age_at_intake_years"] = (
             (self.df["intake_date"] - self.df["dob"])
@@ -119,52 +116,63 @@ class ShelterDataCleaner:
                 return "Senior"
 
         self.df["age_group"] = self.df["age_at_intake_years"].apply(age_group)
+        self.df["age_group"] = self.df["age_group"].astype("string")
 
     # splitting sex into base and sterilization status
     def create_sex_features(self) -> None:
         if "sex" not in self.df.columns:
             self.df["sex_base"] = "Unknown"
-            self.df["is_sterilized"] = pd.Series([pd.NA] * len(self.df), dtype="boolean")
+            self.df["is_sterilized"] = pd.Series(pd.NA, index=self.df.index, dtype="boolean")
             return
 
-        sex = self.df["sex"].astype("string").str.upper()
+        sex = self.df["sex"].astype("string")
 
-        # Base sex: if NEUTERED or SPAYED, map to MALE/FEMALE
         self.df["sex_base"] = sex.replace({
-            "NEUTERED": "Male",
-            "SPAYED": "Female",
-        }).where(sex.isin(["MALE", "FEMALE", "UNKNOWN", "NEUTERED", "SPAYED"]), other="Unknown")
+            "Neutered": "Male",
+            "Spayed": "Female",
+        }).where(
+            sex.isin(["Male", "Female", "Unknown", "Neutered", "Spayed"]),
+            other="Unknown"
+        )
 
-        # Sterilization status
         is_ster = pd.Series(pd.NA, index=self.df.index, dtype="boolean")
-        is_ster = is_ster.mask(sex.isin(["NEUTERED", "SPAYED"]), True)
-        is_ster = is_ster.mask(sex.isin(["MALE", "FEMALE"]), False)
-        # UNKNOWN stays <NA>
+        is_ster = is_ster.mask(sex.isin(["Neutered", "Spayed"]), True)
+        is_ster = is_ster.mask(sex.isin(["Male", "Female"]), False) # we assume unsterilized if not specified
+
         self.df["is_sterilized"] = is_ster
 
-    # outcome grouping: NO_OUTCOME_YET, POSITIVE, NEGATIVE, OTHER_OR_PARTNER, ADMIN_OR_UNKNOWN
+
+    # outcome grouping: No_Outcome_Yet, Positive, Negative, Other_or_Partner, Admin_or_Unknown
     def create_outcome_group(self) -> None:
         if "outcome_is_current" in self.df.columns:
             current_mask = self.df["outcome_is_current"] == True
         else:
             current_mask = pd.Series(False, index=self.df.index)
 
-        outcome_type = self.df["outcome_type"] if "outcome_type" in self.df.columns else pd.Series(pd.NA, index=self.df.index, dtype="string")
+        outcome_type = (
+            self.df["outcome_type"]
+            if "outcome_type" in self.df.columns
+            else pd.Series(pd.NA, index=self.df.index, dtype="string")
+        )
 
-        positive = {"ADOPTION", "RETURN TO OWNER", "COMMUNITY CAT", "RETURN TO WILD HABITAT", "HOMEFIRST", "FOSTER TO ADOPT"}
-        negative = {"EUTHANASIA", "DIED", "DISPOSAL"}
-        partner = {"TRANSFER", "RESCUE", "TRANSPORT", "SHELTER, NEUTER, RETURN"}
-        admin = {"MISSING", "DUPLICATE"}
+        positive = {
+            "Adoption", "Return To Owner", "Community Cat",
+            "Return To Wild Habitat", "Homefirst", "Foster To Adopt"
+        }
+        negative = {"Euthanasia", "Died", "Disposal"}
+        partner = {"Transfer", "Rescue", "Transport", "Shelter, Neuter, Return"}
+        admin = {"Missing", "Duplicate"}
 
-        group = pd.Series("ADMIN_OR_UNKNOWN", index=self.df.index, dtype="string")
+        group = pd.Series("Admin_or_Unknown", index=self.df.index, dtype="string")
 
         group = group.mask(current_mask | outcome_type.isna(), "No_Outcome_Yet")
         group = group.mask(outcome_type.isin(positive), "Positive")
         group = group.mask(outcome_type.isin(negative), "Negative")
-        group = group.mask(outcome_type.isin(partner), "Other_or_Partner")
-        group = group.mask(outcome_type.isin(admin), "Admin_or_Unknown")
+        group = group.mask(outcome_type.isin(partner), "Other_or_Partner") # 
+        group = group.mask(outcome_type.isin(admin), "Admin_or_Unknown") # whether missing or duplicate
 
         self.df["outcome_group"] = group
+
 
     # Validation
     def validate_fields(self) -> None:

@@ -11,7 +11,7 @@ def main():
     raw_df = loader.load()
 
     print("\n================= RAW DATA ======================")
-    print(raw_df.head(3))
+    print(raw_df.head(8))
     print(raw_df.dtypes)
 
     # Clean data
@@ -19,7 +19,7 @@ def main():
     clean_df = cleaner.finalize()
 
     print("\n====================== CLEANED DATA ======================")
-    print(clean_df.head(6))
+    print(clean_df.head(8))
     print(clean_df.dtypes)
 
     print("\n====================== ADDITIONAL CHECKS ======================")
