@@ -1,4 +1,10 @@
+import sys
 import pandas as pd
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(PROJECT_ROOT / "src"))
 
 from config import RAW_DATA_FILE
 

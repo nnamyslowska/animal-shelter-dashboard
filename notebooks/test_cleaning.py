@@ -1,7 +1,14 @@
+import sys
+from pathlib import Path
+import pandas as pd
+
+pd.set_option("display.max_columns", None)
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(PROJECT_ROOT / "src"))
+
 from data_loader import ShelterDataLoader
 from cleaner import ShelterDataCleaner
-
-import pandas as pd
 
 pd.set_option("display.max_columns", None)
 
