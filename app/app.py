@@ -10,8 +10,7 @@ sys.path.append(str(PROJECT_ROOT / "src"))
 from data_loader import ShelterDataLoader
 from cleaner import ShelterDataCleaner
 from auth_db import init_db, add_user, create_user, check_login, log_action
-from plots import plot_bar_counts, plot_hist , plot_line, plot_box, plot_scatter
-
+from plots import plot_bar_counts, plot_hist , plot_line, plot_box, plot_scatter, plot_stacked_bar, plot_heatmap, plot_violin_by_group
 st.set_page_config(page_title="Animal Shelter Dashboard", layout="wide")
 
 @st.cache_data
@@ -28,7 +27,6 @@ def load_and_clean_data() -> pd.DataFrame:
 
 def login_screen() -> None:
     st.title("Animal Shelter Dashboard")
-    st.caption("Login or create an account")
 
     left, center, right = st.columns([1, 2, 1])
     with center:
@@ -51,13 +49,6 @@ def login_screen() -> None:
                     log_action(username or "Unknown", "login_failed", "Invalid credentials")
                     st.error("Invalid username or password.")
 
-            st.divider()
-            st.caption("Demo (for testing)")
-            if st.button("Create demo user (admin/admin)"):
-                add_user("admin", "admin")
-                log_action("admin", "demo_user_created", "admin/admin created or overwritten")
-                st.success("Demo user created: admin / admin")
-
         with tab_register:
             with st.form("register_form"):
                 new_user = st.text_input("New username", key="reg_user")
@@ -78,13 +69,9 @@ def login_screen() -> None:
                     else:
                         st.error("That username already exists.")
 
-
-
 def logs_tab(username: str) -> None:
     st.subheader("Logs (SQLite)")
-    st.write("This tab shows that the app writes user actions to SQLite.")
 
-    # Simple select, same level as class
     import sqlite3
     conn = sqlite3.connect(PROJECT_ROOT / "data" / "app.db")
     df_logs = pd.read_sql_query(
@@ -147,12 +134,11 @@ def main() -> None:
     if outcome_group != "All":
         filtered = filtered[filtered["outcome_group"] == outcome_group]
 
-    tab_about, tab_rq1, tab_rq2, tab_rq3, tab_rq4, tab_logs = st.tabs([
+    tab_about, tab_rq1, tab_rq2, tab_rq3, tab_logs = st.tabs([
         "About the data",
         "RQ1: Intake & outcomes",
         "RQ2: Adoption likelihood",
-        "RQ3: Intake reasons & outcomes",
-        "RQ4: Length of stay",
+        "RQ3: Length of stay",
         "Logs"
     ])
 
@@ -208,8 +194,7 @@ def main() -> None:
             """
             1. What are the most common intake and outcome types?
             2. Are some animals more likely to be adopted than others?
-            3. Do intake reasons influence outcomes?
-            4. How long do animals typically stay in the shelter?
+            3. How long do animals typically stay in the shelter?
             """
         )
 
@@ -219,6 +204,7 @@ def main() -> None:
             """
         )
 
+# ------------------------------- RQ1 -----------------------------------------------
     with tab_rq1:
         st.header("RQ1: What are the most common intake and outcome types?")
 
@@ -357,6 +343,74 @@ def main() -> None:
                 """
             )
 
+        st.divider()
+
+        col_s1, col_s2 = st.columns([2, 1])
+
+        with col_s1:
+            # Sex distribution (Male / Female / Unknown)
+            sex_counts = (
+                filtered["sex_base"]
+                .fillna("Unknown")
+                .value_counts()
+            )
+
+            fig_sex = plot_bar_counts(
+                sex_counts,
+                title="Sex distribution of animals (Male / Female / Unknown)",
+                xlabel="Sex (base)",
+                ylabel="Number of cases",
+                top_n=None,
+                figsize=(6.5, 3.2),
+                cmap_name="viridis"
+            )
+            st.pyplot(fig_sex, use_container_width=True)
+
+        with col_s2:
+            st.subheader("What this chart shows")
+            st.write(
+                """
+                This chart shows the distribution of animals by sex.
+                The original sex information was simplified into three categories: Male, Female, and Unknown.
+                """
+            )
+
+        st.divider()
+
+        col_col1, col_col2 = st.columns([2, 1])
+
+        with col_col1:
+            if "primary_color" not in filtered.columns:
+                st.warning("Column primary_color not found.")
+            else:
+                color_counts = (
+                    filtered["primary_color"]
+                    .fillna("Unknown")
+                    .value_counts()
+                    .head(15)   # Top 15 most common colors
+                )
+
+                fig_colors = plot_bar_counts(
+                    color_counts,
+                    title="Most common primary colors (Top 15)",
+                    xlabel="Primary color",
+                    ylabel="Number of cases",
+                    top_n=None,
+                    figsize=(6.5, 3.2),
+                    cmap_name="viridis"
+                )
+                st.pyplot(fig_colors, use_container_width=True)
+
+        with col_col2:
+            st.subheader("What this chart shows")
+            st.write(
+                """
+                This chart shows the most common primary colors recorded for animals in the dataset.
+                Colors are taken from the primary_color field and represent the main coat color category.
+                It provides a basic description of the animal population entering the shelter.
+                """
+            )
+
         st.success(
             """
             RQ1 Conclusions
@@ -367,15 +421,233 @@ def main() -> None:
             """
         )
 
+# ------------------------------- RQ2 -----------------------------------------------
+    with tab_rq2:
+        st.header("RQ2: Adoption likelihood")
+
+        st.info(
+            """
+            This section explores whether some animals are more likely to have positive outcomes than others.
+            In this project, a "positive outcome" is defined using the outcome_group variable (Positive vs other groups).
+            """
+        )
+
+        # Safety checks (class-level)
+        required_cols = {"outcome_group", "animal_type", "age_group"}
+        missing = [c for c in required_cols if c not in filtered.columns]
+        if missing:
+            st.warning(f"Missing required column(s) for RQ2: {', '.join(missing)}")
+        else:
+            df_rq2 = filtered.copy()
+
+            # Define adopted/positive as a simple boolean
+            df_rq2["is_positive_outcome"] = df_rq2["outcome_group"] == "Positive"
+
+            # -----------------------------
+            # Plot 1: Positive outcome rate by animal type
+            # -----------------------------
+            col1, col2 = st.columns([2, 1])
+
+            with col1:
+                adoption_by_type = (
+                    df_rq2.dropna(subset=["animal_type", "is_positive_outcome"])
+                    .groupby("animal_type")["is_positive_outcome"]
+                    .mean()
+                    .sort_values(ascending=False)
+                )
+
+                if adoption_by_type.empty:
+                    st.warning("Not enough data to calculate adoption rate by animal type.")
+                else:
+                    # Convert to percent for readability
+                    adoption_by_type_pct = (adoption_by_type * 100).round(1)
+
+                    fig1 = plot_bar_counts(
+                        adoption_by_type_pct,
+                        title="Positive outcome rate by animal type (%)",
+                        xlabel="Animal type",
+                        ylabel="Positive outcome rate (%)",
+                        top_n=8,
+                        figsize=(6.5, 3.2),
+                        cmap_name="viridis"
+                    )
+                    st.pyplot(fig1, use_container_width=True)
+
+            with col2:
+                st.subheader("What this chart shows")
+                st.write(
+                    """
+                    This chart shows the percentage of cases that ended with a positive outcome by animal type.
+                    Dogs have the highest positive outcome rate.
+                    Cats and small mammals have moderate positive outcome rates.
+                    Reptiles and animals grouped as “Other” have the lowest positive outcome rates.
+                    This suggests that adoption likelihood differs across animal types.
+                    """
+                )
+
+            st.divider()
+
+            # -----------------------------
+            # Plot 2: Positive outcome rate by age group
+            # -----------------------------
+            col3, col4 = st.columns([2, 1])
+
+            with col3:
+                adoption_by_age = (
+                    df_rq2.dropna(subset=["age_group", "is_positive_outcome"])
+                    .groupby("age_group")["is_positive_outcome"]
+                    .mean()
+                )
+
+                # Optional: keep a logical order if your labels allow it
+                # If your age_group is already ordered categories, this will keep it.
+                # Otherwise it will still plot in groupby order.
+                if adoption_by_age.empty:
+                    st.warning("Not enough data to calculate adoption rate by age group.")
+                else:
+                    adoption_by_age_pct = (adoption_by_age * 100).round(1)
+
+                    fig2 = plot_bar_counts(
+                        adoption_by_age_pct,
+                        title="Positive outcome rate by age group (%)",
+                        xlabel="Age group",
+                        ylabel="Positive outcome rate (%)",
+                        top_n=None,
+                        figsize=(6.5, 3.2),
+                        cmap_name="viridis"
+                    )
+                    st.pyplot(fig2, use_container_width=True)
+
+            with col4:
+                st.subheader("What this chart shows")
+                st.write(
+                    """
+                    This chart shows how positive outcome rates differ across age groups.
+                    Senior, Young, and Adult animals have relatively high positive outcome rates.
+                    Baby animals have a lower positive outcome rate compared to older age groups.
+                    The Unknown age group has the lowest positive outcome rate.
+                    """
+                )
+
+            st.divider()
+
+            # -----------------------------
+            # Plot 3: Outcome-group distribution by age group (stacked bar)
+            # -----------------------------
+            col5, col6 = st.columns([2, 1])
+
+            with col5:
+                def normalize_age_group(v):
+                    # Case 1: real tuple like ("Adult", "Adult")
+                    if isinstance(v, tuple) and len(v) > 0:
+                        return str(v[0])
+
+                    # Case 2: string like "(Adult, Adult)"
+                    s = str(v).strip()
+                    if s.startswith("(") and s.endswith(")") and "," in s:
+                        # remove parentheses and take the first item before the comma
+                        inner = s[1:-1]
+                        first = inner.split(",")[0].strip().strip("'").strip('"')
+                        return first
+
+                    # Case 3: normal label
+                    return s
+
+                df_rq2["age_group_clean"] = df_rq2["age_group"].apply(normalize_age_group)
+
+                dist = pd.crosstab(
+                    index=df_rq2["age_group_clean"],
+                    columns=df_rq2["outcome_group"],
+                    normalize="index"
+                )
+
+                # Optional: keep a clean order on x-axis
+                age_order = ["Baby", "Young", "Adult", "Senior", "Unknown"]
+                dist = dist.reindex([a for a in age_order if a in dist.index])
+
+                # Make sure all expected outcome groups exist as columns (keeps legend consistent)
+                expected_cols = ["Admin_or_Unknown", "Negative", "No_Outcome_Yet", "Other_or_Partner", "Positive"]
+                for c in expected_cols:
+                    if c not in dist.columns:
+                        dist[c] = 0.0
+                dist = dist[expected_cols]
+
+                if dist.empty:
+                    st.warning("Not enough data to build outcome distribution by age group.")
+                else:
+                    fig3 = plot_stacked_bar(
+                        df=dist,
+                        title="Outcome group distribution by age group",
+                        xlabel="Age group",
+                        ylabel="Share of outcomes",
+                        figsize=(6.5, 3.4),
+                        cmap_name="viridis",
+                        legend_title="Outcome group"
+                    )
+                    st.pyplot(fig3, use_container_width=True)
 
 
+            with col6:
+                st.subheader("What this chart shows")
+                st.write(
+                    """
+                    This stacked bar chart shows the share of each outcome group within each age group.
+                    Positive outcomes make up a larger share for some age groups than others.
+                    Negative and partner-related outcomes are more common in certain age groups.
+                    """
+                )
 
+            st.divider()
 
+            colh1, colh2 = st.columns([2, 1])
 
+            with colh1:
+                # Build a matrix of positive outcome rates (0..1)
+                heat_df = pd.crosstab(
+                    index=df_rq2["age_group_clean"],
+                    columns=df_rq2["animal_type"],
+                    values=df_rq2["is_positive_outcome"],
+                    aggfunc="mean"
+                )
 
+                # Order age groups for readability
+                age_order = ["Baby", "Young", "Adult", "Senior", "Unknown"]
+                heat_df = heat_df.reindex([a for a in age_order if a in heat_df.index])
 
-    with tab_rq4:
-        st.header("RQ4: How long do animals typically stay in the shelter?")
+                # Missing combinations -> NaN (no data). Keep them as NaN so they show as blank/neutral.
+                # (Plot function will handle NaN safely.)
+                fig_hm = plot_heatmap(
+                    heat_df,
+                    title="Positive outcome rate by age group and animal type",
+                    xlabel="Animal type",
+                    ylabel="Age group",
+                    figsize=(7, 4),
+                    cmap="RdBu_r"   # classic red-white-blue heatmap
+                )
+                st.pyplot(fig_hm, use_container_width=True)
+
+            with colh2:
+                st.subheader("What this chart shows")
+                st.write(
+                    """
+                    This heatmap shows the positive outcome rate for each combination of age group and animal type.
+                    Each cell represents a percentage (from 0 to 1). Warmer colors indicate higher rates and cooler colors indicate lower rates.
+                    """
+                )
+
+            st.success(
+                """
+                RQ2 Conclusions
+                Positive outcome rates differ across animal types and age groups.
+                Some animal types have higher positive outcome rates than others.
+                Age group also matters, as the outcome distribution changes across age categories.
+                Overall, these results suggest that both animal type and age are related to adoption likelihood.
+                """
+            )
+
+# ------------------------------- RQ3 -----------------------------------------------
+    with tab_rq3:
+        st.header("RQ3: How long do animals typically stay in the shelter?")
 
         st.info(
             """
@@ -471,7 +743,7 @@ def main() -> None:
                         scatter_df,
                         x="age_at_intake_years",
                         y="intake_duration",
-                        title="Age vs length of stay (sample, capped)",
+                        title="Age vs length of stay",
                         xlabel="Age at intake (years)",
                         ylabel="Days in shelter",
                         figsize=(6.5, 3.2),
@@ -489,6 +761,51 @@ def main() -> None:
                         """
                     )
 
+        st.divider()
+
+        # Use the same filtered data, cap length of stay for readability
+        violin_df = filtered.copy()
+        violin_df = violin_df[
+            (violin_df["intake_duration"].between(0, 365)) &
+            (violin_df["age_group"].notna())
+        ].copy()
+
+        # If age_group values are messy, reuse your cleaning (if you already made age_group_clean in RQ2)
+        if "age_group_clean" in df_rq2.columns:
+            violin_df["age_group_clean"] = df_rq2["age_group_clean"]
+        else:
+            violin_df["age_group_clean"] = violin_df["age_group"].astype(str)
+
+        colv1, colv2 = st.columns([2, 1])
+
+        with colv1:
+            fig_v = plot_violin_by_group(
+                df=violin_df,
+                value_col="intake_duration",
+                group_col="age_group_clean",
+                title="Length of stay by age group",
+                xlabel="Age group",
+                ylabel="Days in shelter",
+                order=["Baby", "Young", "Adult", "Senior", "Unknown"],
+                y_max=120,              
+                figsize=(6.5, 3.4),
+                cmap_name="viridis"
+            )
+            st.pyplot(fig_v, use_container_width=True)
+
+        with colv2:
+            st.subheader("What this chart shows")
+            st.write(
+                """
+                This violin plot shows how length of stay in the shelter is distributed within each age group.
+                Age groups are defined based on age at intake: Baby (under 1 year), Young (1–3 years), Adult (3–8 years), Senior (over 8 years), and Unknown.
+
+                \nAcross all age groups, the vast majority of animals stay in the shelter for less than 20 days.
+                All age groups show a similar pattern, with short stays being the most common.
+                Longer stays occur in every age group but are much less frequent.
+                """
+            )
+
         st.success(
             """
             Most animals leave the shelter within a short period after intake.
@@ -497,7 +814,6 @@ def main() -> None:
             Animal age does not show a strong relationship with length of stay, as both short and long stays occur across different age groups.
             """
         )
-
 
     with tab_logs:
         log_action(username, "open_tab", "Logs")
