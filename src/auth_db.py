@@ -2,7 +2,6 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-# Always resolve to: <project_root>/data/app.db
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = PROJECT_ROOT / "data" / "app.db"
 
@@ -45,10 +44,7 @@ def user_exists(username: str) -> bool:
     return exists
 
 
-def create_user(username: str, password: str) -> bool:
-    """
-    Returns True if user was created, False if username already exists.
-    """
+def create_user(username: str, password: str) -> bool: # returns False if user exists
     if user_exists(username):
         return False
 
@@ -61,9 +57,6 @@ def create_user(username: str, password: str) -> bool:
 
 
 def add_user(username: str, password: str):
-    """
-    For demo/admin: overwrite if exists (simple).
-    """
     conn = connect()
     cur = conn.cursor()
     cur.execute("INSERT OR REPLACE INTO users (username, password) VALUES (?, ?);", (username, password))
