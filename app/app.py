@@ -10,7 +10,7 @@ sys.path.append(str(PROJECT_ROOT / "src"))
 from data_loader import ShelterDataLoader
 from cleaner import ShelterDataCleaner
 from auth_db import init_db, add_user, create_user, check_login, log_action
-from plots import plot_bar_counts, plot_hist , plot_line, plot_box, plot_scatter, plot_stacked_bar, plot_heatmap, plot_violin_by_group
+from plots import plot_bar_counts, plot_hist , plot_line, plot_box, plot_scatter, plot_stacked_bar, plot_violin_by_group
 st.set_page_config(page_title="Animal Shelter Dashboard", layout="wide")
 
 @st.cache_data
@@ -115,7 +115,7 @@ def main() -> None:
 
     st.title("Animal Shelter Dashboard")
 
-    # filters (simple, class-level)
+    # filters in sidebar
     animal_types = sorted(df["animal_type"].dropna().unique().tolist()) if "animal_type" in df.columns else []
     outcome_groups = sorted(df["outcome_group"].dropna().unique().tolist()) if "outcome_group" in df.columns else []
 
@@ -124,7 +124,7 @@ def main() -> None:
         animal_type = st.selectbox("Animal type", ["All"] + animal_types)
         outcome_group = st.selectbox("Outcome group", ["All"] + outcome_groups)
 
-    # log filter changes (simple behavior tracking)
+    # log filter changes 
     log_action(username, "filters", f"animal_type={animal_type}, outcome_group={outcome_group}")
 
     # apply filters
@@ -150,6 +150,9 @@ def main() -> None:
             This project uses data from the Long Beach Animal Shelter.
             The dataset contains records of animals that were taken into the shelter
             and their outcomes after intake.
+
+            The dataset is publicly available and can be accessed here:
+            https://longbeach.opendatasoft.com/explore/dataset/animal-shelter-intakes-and-outcomes/information/
             """
         )
 
@@ -159,7 +162,7 @@ def main() -> None:
             """
             Each row represents one animal intake case.
             The dataset includes information such as:
-            - animal type (for example: dog, cat, bird),
+            - animal type,
             - sex and sterilization status,
             - age at intake,
             - intake type and reason for intake,
@@ -175,7 +178,7 @@ def main() -> None:
             Before analysis, the dataset was cleaned and prepared.
             The following steps were performed:
             - column names were standardized,
-            - dates were converted to proper date format,
+            - dates were converted to a consistent date format,
             - missing values were handled consistently,
             - new variables were created, such as age group and outcome group,
             - incorrect or unrealistic values were removed.
@@ -193,14 +196,32 @@ def main() -> None:
         st.markdown(
             """
             1. What are the most common intake and outcome types?
-            2. Are some animals more likely to be adopted than others?
+            2. Are some animals more likely to have positive outcomes than others?
             3. How long do animals typically stay in the shelter?
+            """
+        )
+
+        st.subheader("Definitions used in the analysis")
+
+        st.write(
+            """
+            Outcome groups are defined as follows:
+            - Positive: Adoption, Return To Owner, Community Cat, Return To Wild Habitat, Homefirst, Foster To Adopt
+            - Negative: Euthanasia, Died, Disposal
+            - Other or Partner: Transfer, Rescue, Transport, Shelter, Neuter, Return
+            - Admin or Unknown: Missing, Duplicate
+            - No Outcome Yet: Animals that are still in the shelter
             """
         )
 
         st.write(
             """
-            The following tabs present visual analyses that address each research question.
+            Age groups are defined based on age at intake:
+            - Baby: under 1 year
+            - Young: 1-3 years
+            - Adult: 3-8 years
+            - Senior: over 8 years
+            - Unknown: age not recorded
             """
         )
 
@@ -210,10 +231,10 @@ def main() -> None:
 
         st.info(
             """
-            - Stray is the most common intake type by a large margin.
-            - Rescue and adoption are the most common outcome types.
-            - Many intake records have an unknown intake reason, so reasons must be interpreted with care.
-            - Monthly intakes change over time and show repeating peaks and drops.
+            - Stray animals are the most common intake type by a large margin.
+            - Rescue and adoption are the most common outcomes, but euthanasia is also frequent.
+            - Many intake records have an unknown intake reason, which limits detailed analysis.
+            - Monthly intake counts show clear seasonal patterns over time.
             """
         )
 
@@ -280,8 +301,9 @@ def main() -> None:
             st.subheader("What this chart shows")
             st.write(
                 """
-                This bar chart shows the most common outcomes.
-                It helps us see what happens to animals after intake.
+                This bar chart shows the most common outcomes after intake.
+                Rescue and adoption are the most frequent outcomes.
+                Euthanasia also appears as one of the more common outcome types.
                 """
             )
 
@@ -307,8 +329,9 @@ def main() -> None:
             st.subheader("What this chart shows")
             st.write(
                 """
-                This chart shows why animals are brought to the shelter.
-                It helps us understand the main drivers of intake.
+                This chart shows the most common recorded reasons for intake.
+                A large share of records are labeled as Unknown as the vast majority of reason_for_intake values were missing.
+                This means that detailed analysis of intake reasons is limited.
                 """
             )
 
@@ -339,7 +362,10 @@ def main() -> None:
             st.subheader("What this chart shows")
             st.write(
                 """
-                This line chart shows how intakes change over time.          
+                This line chart shows how monthly intake numbers change over time.
+                Intake counts show clear repeating peaks and drops, which suggests seasonality.
+                There is also a visible decrease in intakes around the period of the COVID-19 pandemic.
+                These patterns may be influenced by changes in human behavior.
                 """
             )
 
@@ -348,7 +374,7 @@ def main() -> None:
         col_s1, col_s2 = st.columns([2, 1])
 
         with col_s1:
-            # Sex distribution (Male / Female / Unknown)
+            # Sex distribution
             sex_counts = (
                 filtered["sex_base"]
                 .fillna("Unknown")
@@ -372,6 +398,7 @@ def main() -> None:
                 """
                 This chart shows the distribution of animals by sex.
                 The original sex information was simplified into three categories: Male, Female, and Unknown.
+                Slightly more male animals than female animals were admitted to the shelter.
                 """
             )
 
@@ -405,34 +432,42 @@ def main() -> None:
             st.subheader("What this chart shows")
             st.write(
                 """
-                This chart shows the most common primary colors recorded for animals in the dataset.
-                Colors are taken from the primary_color field and represent the main coat color category.
-                It provides a basic description of the animal population entering the shelter.
+                This chart shows the most common primary coat colors recorded for animals in the dataset.
+                Black is the most frequently recorded primary color.
+                This pattern is consistent with observations commonly reported by animal shelters.
                 """
             )
 
         st.success(
             """
             RQ1 Conclusions
-            The shelter mainly receives stray animals. This is the dominant intake type.
-            The most common outcomes are rescue and adoption, which suggests many animals find homes.
-            Intake reasons are often missing or recorded as Unknown, so detailed reason analysis is limited.
-            Intake volume changes across months and shows a repeating pattern, which may indicate seasonality.
+
+            \nThe shelter mainly receives stray animals, which is the dominant intake type.
+            Rescue and adoption are the most common outcomes, indicating that many animals eventually leave the shelter through positive channels.
+            However, euthanasia also represents a significant share of outcomes.
+
+            \nIntake reasons are often missing or recorded as Unknown, which limits detailed analysis of why animals are brought to the shelter.
+            Monthly intake patterns show clear seasonality, with repeating increases and decreases over time.
+            A temporary decrease in intakes is visible during the COVID-19 period.
+
+            \nSlightly more male animals than female animals are admitted.
+            Black is the most common primary coat color among admitted animals, which aligns with common shelter population patterns.
             """
         )
 
+
 # ------------------------------- RQ2 -----------------------------------------------
     with tab_rq2:
-        st.header("RQ2: Adoption likelihood")
+        st.header("RQ2: Are some animals more likely to have positive outcomes than others?")
 
         st.info(
             """
             This section explores whether some animals are more likely to have positive outcomes than others.
-            In this project, a "positive outcome" is defined using the outcome_group variable (Positive vs other groups).
+            In this project, a positive outcome is defined using the outcome_group variable.
+            Positive outcomes are compared with other outcome groups.
             """
         )
 
-        # Safety checks (class-level)
         required_cols = {"outcome_group", "animal_type", "age_group"}
         missing = [c for c in required_cols if c not in filtered.columns]
         if missing:
@@ -440,12 +475,8 @@ def main() -> None:
         else:
             df_rq2 = filtered.copy()
 
-            # Define adopted/positive as a simple boolean
             df_rq2["is_positive_outcome"] = df_rq2["outcome_group"] == "Positive"
 
-            # -----------------------------
-            # Plot 1: Positive outcome rate by animal type
-            # -----------------------------
             col1, col2 = st.columns([2, 1])
 
             with col1:
@@ -459,7 +490,6 @@ def main() -> None:
                 if adoption_by_type.empty:
                     st.warning("Not enough data to calculate adoption rate by animal type.")
                 else:
-                    # Convert to percent for readability
                     adoption_by_type_pct = (adoption_by_type * 100).round(1)
 
                     fig1 = plot_bar_counts(
@@ -479,17 +509,14 @@ def main() -> None:
                     """
                     This chart shows the percentage of cases that ended with a positive outcome by animal type.
                     Dogs have the highest positive outcome rate.
-                    Cats and small mammals have moderate positive outcome rates.
-                    Reptiles and animals grouped as “Other” have the lowest positive outcome rates.
-                    This suggests that adoption likelihood differs across animal types.
+                    Cats have a lower positive outcome rate than dogs.
+                    Animals grouped as Reptile or Other have the lowest positive outcome rates.
+                    This indicates that adoption likelihood differs across animal types.
                     """
                 )
 
             st.divider()
 
-            # -----------------------------
-            # Plot 2: Positive outcome rate by age group
-            # -----------------------------
             col3, col4 = st.columns([2, 1])
 
             with col3:
@@ -499,9 +526,6 @@ def main() -> None:
                     .mean()
                 )
 
-                # Optional: keep a logical order if your labels allow it
-                # If your age_group is already ordered categories, this will keep it.
-                # Otherwise it will still plot in groupby order.
                 if adoption_by_age.empty:
                     st.warning("Not enough data to calculate adoption rate by age group.")
                 else:
@@ -523,34 +547,28 @@ def main() -> None:
                 st.write(
                     """
                     This chart shows how positive outcome rates differ across age groups.
-                    Senior, Young, and Adult animals have relatively high positive outcome rates.
-                    Baby animals have a lower positive outcome rate compared to older age groups.
+                    Senior animals have the highest positive outcome rate overall.
+                    Young and Adult animals also have relatively high positive outcome rates.
+                    Baby animals have a lower positive outcome rate.
                     The Unknown age group has the lowest positive outcome rate.
                     """
                 )
 
             st.divider()
 
-            # -----------------------------
-            # Plot 3: Outcome-group distribution by age group (stacked bar)
-            # -----------------------------
             col5, col6 = st.columns([2, 1])
 
             with col5:
                 def normalize_age_group(v):
-                    # Case 1: real tuple like ("Adult", "Adult")
                     if isinstance(v, tuple) and len(v) > 0:
                         return str(v[0])
 
-                    # Case 2: string like "(Adult, Adult)"
                     s = str(v).strip()
                     if s.startswith("(") and s.endswith(")") and "," in s:
-                        # remove parentheses and take the first item before the comma
                         inner = s[1:-1]
                         first = inner.split(",")[0].strip().strip("'").strip('"')
                         return first
 
-                    # Case 3: normal label
                     return s
 
                 df_rq2["age_group_clean"] = df_rq2["age_group"].apply(normalize_age_group)
@@ -561,11 +579,9 @@ def main() -> None:
                     normalize="index"
                 )
 
-                # Optional: keep a clean order on x-axis
                 age_order = ["Baby", "Young", "Adult", "Senior", "Unknown"]
                 dist = dist.reindex([a for a in age_order if a in dist.index])
 
-                # Make sure all expected outcome groups exist as columns (keeps legend consistent)
                 expected_cols = ["Admin_or_Unknown", "Negative", "No_Outcome_Yet", "Other_or_Partner", "Positive"]
                 for c in expected_cols:
                     if c not in dist.columns:
@@ -592,58 +608,28 @@ def main() -> None:
                 st.write(
                     """
                     This stacked bar chart shows the share of each outcome group within each age group.
-                    Positive outcomes make up a larger share for some age groups than others.
-                    Negative and partner-related outcomes are more common in certain age groups.
-                    """
-                )
-
-            st.divider()
-
-            colh1, colh2 = st.columns([2, 1])
-
-            with colh1:
-                # Build a matrix of positive outcome rates (0..1)
-                heat_df = pd.crosstab(
-                    index=df_rq2["age_group_clean"],
-                    columns=df_rq2["animal_type"],
-                    values=df_rq2["is_positive_outcome"],
-                    aggfunc="mean"
-                )
-
-                # Order age groups for readability
-                age_order = ["Baby", "Young", "Adult", "Senior", "Unknown"]
-                heat_df = heat_df.reindex([a for a in age_order if a in heat_df.index])
-
-                # Missing combinations -> NaN (no data). Keep them as NaN so they show as blank/neutral.
-                # (Plot function will handle NaN safely.)
-                fig_hm = plot_heatmap(
-                    heat_df,
-                    title="Positive outcome rate by age group and animal type",
-                    xlabel="Animal type",
-                    ylabel="Age group",
-                    figsize=(7, 4),
-                    cmap="RdBu_r"   # classic red-white-blue heatmap
-                )
-                st.pyplot(fig_hm, use_container_width=True)
-
-            with colh2:
-                st.subheader("What this chart shows")
-                st.write(
-                    """
-                    This heatmap shows the positive outcome rate for each combination of age group and animal type.
-                    Each cell represents a percentage (from 0 to 1). Warmer colors indicate higher rates and cooler colors indicate lower rates.
+                    Positive outcomes make up a large share for most age groups.
+                    The Senior age group also shows a relatively high share of negative outcomes.
+                    This suggests that age is related not only to adoption success but also to outcome type.
                     """
                 )
 
             st.success(
                 """
                 RQ2 Conclusions
-                Positive outcome rates differ across animal types and age groups.
-                Some animal types have higher positive outcome rates than others.
-                Age group also matters, as the outcome distribution changes across age categories.
-                Overall, these results suggest that both animal type and age are related to adoption likelihood.
+
+                \nPositive outcome rates differ across both animal types and age groups.
+                Dogs have a higher positive outcome rate than cats.
+                For both dogs and cats, young animals aged 1-3 years show relatively high chances of positive outcomes.
+
+                \nOverall, senior animals have the highest positive outcome rate.
+                However, for senior cats, a large share of outcomes is negative.
+                This indicates that age and animal type interact in shaping adoption likelihood.
+
+                \nThese results suggest that both animal type and age at intake are important factors related to adoption outcomes.
                 """
             )
+
 
 # ------------------------------- RQ3 -----------------------------------------------
     with tab_rq3:
@@ -651,8 +637,8 @@ def main() -> None:
 
         st.info(
             """
-            This section describes the length of stay in the shelter.
-            It shows the overall distribution and how stay length differs by outcome group.
+            This section examines how long animals typically stay in the shelter.
+            It shows the overall distribution of length of stay and how stay length differs by age group and outcome group.
             """
         )
 
@@ -662,13 +648,12 @@ def main() -> None:
             stay = filtered["intake_duration"].dropna()
             stay = stay[(stay >= 0) & (stay <= 365)]  # cap at 1 year for readability
 
-            # --- Row 1: Histogram + explanation ---
             col1, col2 = st.columns([2, 1])
 
             with col1:
                 fig1 = plot_hist(
                     stay,
-                    title="Length of stay distribution (0–365 days)",
+                    title="Length of stay distribution (0-365 days)",
                     xlabel="Days in shelter",
                     bins=40,
                     figsize=(6.5, 3.2)
@@ -687,7 +672,6 @@ def main() -> None:
 
             st.divider()
 
-            # --- Row 2: Boxplot by outcome group + explanation ---
             col3, col4 = st.columns([2, 1])
 
             with col3:
@@ -712,15 +696,10 @@ def main() -> None:
                 st.write(
                     """
                     This boxplot compares length of stay across outcome groups.
-                    Negative outcomes are associated with very short stays in the shelter.
-                    Positive outcomes tend to have longer and more variable stays.
-                    Partner and administrative outcomes show mixed patterns of stay length.
-                    \n Outcome groups used in this chart:
-                    \n- Positive - Adoption, Return To Owner, Community Cat, Return To Wild Habitat, Homefirst, Foster To Adopt  
-                    \n- Negative - Euthanasia, Died, Disposal  
-                    \n- Other or Partner - Transfer, Rescue, Transport, Shelter, Neuter, Return  
-                    \n- Admin or Unknown - Missing, Duplicate  
-                    \n- No Outcome Yet - Still at the shelter
+                    Animals with negative outcomes tend to have very short stays in the shelter.
+                    Animals with positive outcomes usually stay longer and show more variation
+                    in length of stay.
+                    Other or partner-related outcomes show mixed patterns.
                     """
                 )
 
@@ -755,22 +734,22 @@ def main() -> None:
                     st.subheader("What this chart shows")
                     st.write(
                         """
-                        This scatter plot shows the relationship between age at intake and length of stay.
-                        Most animals stay for a short time regardless of age.
-                        Longer stays appear across different ages, and there is no clear linear relationship between age and length of stay.
+                        This scatter plot shows the relationship between age at intake and length of stay in the shelter.
+                        Each point represents one animal.
+                        Younger animals show a wider range of stay lengths, including some very long stays.
+                        As age increases, most animals tend to have shorter stays.
+                        This suggests that age at intake is related to how long animals remain in the shelter.
                         """
                     )
 
         st.divider()
 
-        # Use the same filtered data, cap length of stay for readability
         violin_df = filtered.copy()
         violin_df = violin_df[
             (violin_df["intake_duration"].between(0, 365)) &
             (violin_df["age_group"].notna())
         ].copy()
 
-        # If age_group values are messy, reuse your cleaning (if you already made age_group_clean in RQ2)
         if "age_group_clean" in df_rq2.columns:
             violin_df["age_group_clean"] = df_rq2["age_group_clean"]
         else:
@@ -798,9 +777,7 @@ def main() -> None:
             st.write(
                 """
                 This violin plot shows how length of stay in the shelter is distributed within each age group.
-                Age groups are defined based on age at intake: Baby (under 1 year), Young (1–3 years), Adult (3–8 years), Senior (over 8 years), and Unknown.
-
-                \nAcross all age groups, the vast majority of animals stay in the shelter for less than 20 days.
+                Across all age groups, the vast majority of animals stay in the shelter for less than 20 days.
                 All age groups show a similar pattern, with short stays being the most common.
                 Longer stays occur in every age group but are much less frequent.
                 """
@@ -808,12 +785,23 @@ def main() -> None:
 
         st.success(
             """
-            Most animals leave the shelter within a short period after intake.
-            The length of stay distribution is highly right-skewed, meaning that only a small number of animals remain in the shelter for a long time.
-            Length of stay differs clearly by outcome group: negative outcomes are associated with very short stays, while positive outcomes tend to involve longer and more variable stays.
-            Animal age does not show a strong relationship with length of stay, as both short and long stays occur across different age groups.
+            RQ3 Conclusions
+
+            \nMost animals stay in the shelter for a relatively short period of time, usually less than 50 days.
+            Only a small number of animals experience very long stays.
+
+            \nLength of stay differs by outcome group.
+            Animals with negative outcomes tend to have very short stays, while animals with positive outcomes generally stay longer.
+
+            \nAge at intake is also related to length of stay.
+            Younger animals, especially those under one year of age, tend to remain in the shelter longer.
+            One possible explanation is that very young animals may need additional care before they are ready for adoption.
+
+            \nDifferences are also visible across animal types.
+            Cats older than one year tend to stay longer than dogs, while very young cats tend to leave the shelter faster than very young dogs.
             """
         )
+
 
     with tab_logs:
         log_action(username, "open_tab", "Logs")
