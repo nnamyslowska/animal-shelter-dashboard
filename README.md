@@ -2,7 +2,6 @@
 
 **Student:** Natalia Namysłowska
 
----
 
 ## Project Description
 
@@ -15,7 +14,6 @@ The project combines data cleaning, exploratory data analysis, visualisation, an
 The full project repository is available on GitHub:
 👉 **[https://github.com/nnamyslowska/animal-shelter-dashboard](https://github.com/nnamyslowska/animal-shelter-dashboard)**
 
----
 
 ## Research Questions
 
@@ -27,7 +25,6 @@ The analysis focuses on the following research questions:
 
 Each research question is explored in a separate tab of the dashboard using multiple visualisations.
 
----
 
 ## Dataset
 
@@ -48,7 +45,6 @@ The dataset contains records of animals taken into the shelter, including:
 
 The dataset was downloaded as a CSV file and kept in its original structure.
 
----
 
 ## Data Preparation
 
@@ -99,7 +95,6 @@ Before analysis, the dataset was cleaned and prepared using a custom data cleani
 
 These steps ensure that the data is consistent and suitable for analysis.
 
----
 
 ## Technologies Used
 
@@ -109,7 +104,6 @@ These steps ensure that the data is consistent and suitable for analysis.
 * **Streamlit** – interactive dashboard
 * **SQLite** – user action logging
 
----
 
 ## How to Run the Project
 
@@ -124,7 +118,6 @@ streamlit run app/app.py
 
 The dashboard will open in your web browser.
 
----
 
 ## Project Structure
 
@@ -183,7 +176,6 @@ animal-shelter-dashboard/
 * **`requirements.txt`**
   Lists all Python dependencies required to run the project.
 
----
 
 ## Notes and Limitations
 
