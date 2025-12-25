@@ -122,35 +122,6 @@ The dashboard will open in your web browser.
 ## Project Structure
 
 The project is organised into clearly separated folders:
-
-```
-animal-shelter-dashboard/
-│
-├── app/
-│   └── app.py
-│
-├── src/
-│   ├── data_loader.py
-│   ├── cleaner.py
-│   ├── plots.py
-│   ├── auth_db.py
-│   └── config.py
-│
-├── data/
-│   ├── animal-shelter-intakes-and-outcomes.csv
-│   └── app.db
-│
-├── notebooks/
-│   ├── inspect_data.py
-│   └── test_cleaning.py
-│
-├── requirements.txt
-├── README.md
-└── .gitignore
-```
-
-### Folder description
-
 * **`app/`**
   Contains the main Streamlit application (`app.py`).
   This file defines the dashboard layout, tabs, filters, and connects all visualisations.
