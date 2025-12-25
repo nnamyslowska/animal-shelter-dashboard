@@ -186,47 +186,6 @@ def plot_stacked_bar(
 
     return fig
 
-def plot_heatmap(
-    df: pd.DataFrame,
-    title: str,
-    xlabel: str,
-    ylabel: str,
-    figsize=(6.5, 3.8),
-    cmap="RdBu_r",
-    vmin: float = 0.0,
-    vmax: float = 1.0
-):
-    df_num = df.copy()
-
-    df_num = df_num.apply(pd.to_numeric, errors="coerce")
-    df_num = df_num.fillna(0.0)
-    fig, ax = plt.subplots(figsize=figsize)
-
-    im = ax.imshow(
-        df_num.values.astype(float),
-        cmap=cmap,
-        aspect="auto",
-        vmin=vmin,
-        vmax=vmax
-    )
-
-    ax.set_title(title)
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-
-    ax.set_xticks(range(len(df_num.columns)))
-    ax.set_xticklabels(df_num.columns, rotation=35, ha="right")
-    ax.set_yticks(range(len(df_num.index)))
-    ax.set_yticklabels(df_num.index)
-
-    cbar = fig.colorbar(im, ax=ax)
-    cbar.set_label("Positive outcome rate (0–1)")
-
-    ax.grid(False)
-    plt.tight_layout()
-    return fig
-
-
 def plot_violin_by_group(
     df: pd.DataFrame,
     value_col: str,
