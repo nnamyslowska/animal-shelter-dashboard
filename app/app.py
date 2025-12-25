@@ -256,6 +256,44 @@ def main() -> None:
         else:
             monthly = None
 
+
+        st.subheader("Animal types admitted to the shelter")
+
+        col1b, col2b = st.columns([2, 1])
+
+        with col1b:
+            if "animal_type" not in filtered.columns:
+                st.warning("Column animal_type not found.")
+            else:
+                animal_counts = (
+                    filtered["animal_type"]
+                    .fillna("Unknown")
+                    .value_counts()
+                )
+
+                fig_animals = plot_bar_counts(
+                    animal_counts,
+                    title="Number of animals admitted by type",
+                    xlabel="Animal type",
+                    ylabel="Number of cases",
+                    top_n=None,               # show all animal types
+                    figsize=(6.5, 3.2),
+                    cmap_name="viridis"
+                )
+                st.pyplot(fig_animals, use_container_width=True)
+
+        with col2b:
+            st.markdown("### What this chart shows")
+            st.write(
+                """
+                This bar chart shows how many animals of each type were admitted to the shelter.
+                Each bar represents the total number of intake cases for a given animal type.
+                Dogs and cats make up the vast majority of admissions, while other animal types
+                appear much less frequently.
+                """
+            )
+        st.divider()
+
         col1, col2 = st.columns([2, 1])
 
         with col1:
@@ -280,6 +318,8 @@ def main() -> None:
                 It helps us understand how animals enter the shelter.
                 """
             )
+
+        st.divider()
 
         col3, col4 = st.columns([2, 1])
 
@@ -334,6 +374,8 @@ def main() -> None:
                 This means that detailed analysis of intake reasons is limited.
                 """
             )
+
+        st.divider()
 
         col7, col8 = st.columns([2, 1])
 
