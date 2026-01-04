@@ -114,7 +114,7 @@ If the "animal-shelter-intakes-and-outcomes.csv" file is not in the `data/` fold
 4. From the main project directory, run:
 
 ```bash
-streamlit run app/app.py
+streamlit run .\app\app.py
 ```
 
 The dashboard will open in your web browser.
