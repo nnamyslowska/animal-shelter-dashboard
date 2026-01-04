@@ -29,7 +29,7 @@ Each research question is explored in a separate tab of the dashboard using mult
 ## Dataset
 
 **Source:** Long Beach Open Data Portal
-**Dataset name:** *Animal Shelter Intakes and Outcomes*
+**Dataset name:** *animal-shelter-intakes-and-outcomes.csv*
 
 **Original dataset link:**
 [https://longbeach.opendatasoft.com/explore/dataset/animal-shelter-intakes-and-outcomes/information/](https://longbeach.opendatasoft.com/explore/dataset/animal-shelter-intakes-and-outcomes/information/)
@@ -107,6 +107,7 @@ These steps ensure that the data is consistent and suitable for analysis.
 
 ## How to Run the Project
 
+If the "animal-shelter-intakes-and-outcomes.csv" file is not in the `data/` folder:
 1. Download the dataset from the link above.
 2. Place the CSV file in the `data/` folder.
 3. Install all required packages listed in `requirements.txt`.
