@@ -108,7 +108,7 @@ These steps ensure that the data is consistent and suitable for analysis.
 ## How to Run the Project
 
 If the "animal-shelter-intakes-and-outcomes.csv" file is not in the `data/` folder:
-1. Download the dataset from the link above.
+1. Download the dataset as .csv from the link above form the "Export" tab from the "Flat file formats". Do not change the file name.
 2. Place the CSV file in the `data/` folder.
 3. Install all required packages listed in `requirements.txt`.
 4. From the main project directory, run:
