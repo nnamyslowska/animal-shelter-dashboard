@@ -1,10 +1,7 @@
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = PROJECT_ROOT / "data" / "app.db"
-
+from config import DB_PATH
 
 def connect():
     return sqlite3.connect(DB_PATH)

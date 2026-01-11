@@ -189,7 +189,7 @@ class ShelterDataCleaner:
 
     # Finalizing the cleaning process and returning cleaned DataFrame
     def finalize(self) -> pd.DataFrame:
-        """Run all cleaning steps in order and return cleaned DataFrame."""
+        """Runs all cleaning steps in order and return cleaned DataFrame."""
         self.clean_column_names()
         self.parse_dates()
         self.fill_missing_values()
