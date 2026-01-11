@@ -1,10 +1,11 @@
 import sys
 from pathlib import Path
+import sqlite3
 
 import streamlit as st
 import pandas as pd
+from config import PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(PROJECT_ROOT / "src"))
 
 from data_loader import ShelterDataLoader
@@ -72,7 +73,6 @@ def login_screen() -> None:
 def logs_tab(username: str) -> None:
     st.subheader("Logs (SQLite)")
 
-    import sqlite3
     conn = sqlite3.connect(PROJECT_ROOT / "data" / "app.db")
     df_logs = pd.read_sql_query(
         "SELECT ts, username, action, details FROM logs ORDER BY id DESC LIMIT 50;",
